@@ -1,6 +1,22 @@
 // REPRESENTS THE MODEL
 
-const initialValue = {
+import type { Player, GameState, Game, GameStatus, Move } from "./types";
+
+// Can add these types in this file only as they are unique to this file
+type PlayerWithWins = Player & { wins: number };
+
+export type DerivedStats = {
+  playerWithStats: PlayerWithWins[];
+  ties: number;
+};
+
+export type DerivedGame = {
+  moves: Move[];
+  currentPlayer: Player;
+  status: GameStatus;
+};
+
+const initialState: GameState = {
   currentGameMoves: [],
   history: {
     currentRoundGames: [],
@@ -9,15 +25,18 @@ const initialValue = {
 };
 
 export default class Store extends EventTarget {
-  #state = initialValue;
+  // #state = initialValue;
 
-  constructor(key, players) {
+  constructor(
+    private readonly storageKey: string,
+    private readonly players: Player[]
+  ) {
     super(); //allows you to inherit from EventTarget
-    this.storageKey = key;
-    this.players = players;
+    // this.storageKey = storageKey;
+    // this.players = players;
   }
 
-  get stats() {
+  get stats(): DerivedStats {
     // console.log(this.#getState());
 
     const state = this.#getState();
@@ -41,7 +60,7 @@ export default class Store extends EventTarget {
   }
 
   //   Getter means you don't have to call this as a function in app.js
-  get game() {
+  get game(): DerivedGame {
     const state = this.#getState();
 
     const currentPlayer = this.players[state.currentGameMoves.length % 2];
@@ -81,8 +100,8 @@ export default class Store extends EventTarget {
     };
   }
 
-  playerMove(squareId) {
-    const stateClone = structuredClone(this.#getState());
+  playerMove(squareId: number) {
+    const stateClone = structuredClone(this.#getState()) as GameState;
 
     stateClone.currentGameMoves.push({
       squareId,
@@ -93,7 +112,7 @@ export default class Store extends EventTarget {
   }
 
   reset() {
-    const stateClone = structuredClone(this.#getState());
+    const stateClone = structuredClone(this.#getState()) as GameState;
 
     const { status, moves } = this.game;
 
@@ -121,12 +140,13 @@ export default class Store extends EventTarget {
   }
 
   #getState() {
-    // return this.#state;
     const item = window.localStorage.getItem(this.storageKey);
-    return item ? JSON.parse(item) : initialValue;
+    return item ? (JSON.parse(item) as GameState) : initialState;
   }
 
-  #saveState(stateOrFunction) {
+  #saveState(
+    stateOrFunction: GameState | ((prevState: GameState) => GameState)
+  ) {
     const prevState = this.#getState();
 
     let newState;
@@ -141,8 +161,6 @@ export default class Store extends EventTarget {
       default:
         throw new Error("Invalid argument passed to saveState");
     }
-
-    // this.#state = newState;
 
     window.localStorage.setItem(this.storageKey, JSON.stringify(newState));
 
